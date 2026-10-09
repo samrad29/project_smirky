@@ -8,3 +8,8 @@ data/activities/*
 !data/activities/.gitkeep
 data/history/*
 !data/history/.gitkeep
+data/FIT_files/*
+!data/FIT_files/.gitkeep
+!data/FIT_files/old_files/
+data/FIT_files/old_files/*
+!data/FIT_files/old_files/.gitkeep

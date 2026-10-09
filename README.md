@@ -45,15 +45,17 @@ python -m run_coach.review \
 
 The result is saved under `output/`. The program does not email anything or change the training plan.
 
-## 3. Import a GPX activity
+## 3. Import FIT activities
 
-The GPX importer uses Python's standard library and does not store GPS coordinates in the normalized JSON.
+Drop new `.fit` files into `data/FIT_files/`. The importer reads the device session and lap summaries. It does not store GPS coordinates.
 
 ```bash
-python -m run_coach.gpx_import "/path/to/your-run.gpx" --output data/activities/my-run.json
+python -m run_coach.fit_import
 ```
 
-Then use `data/activities/my-run.json` as the `--activity` input for the review command. GPX often contains timestamped GPS points, elevation, and heart rate/cadence extensions, but may not include reliable weather, perceived effort, or watch-calculated moving time. The importer uses elapsed time and an approximate GPS-derived distance; compare these against the watch/app summary before trusting the metrics. GPS elevation gain is deliberately conservative and should be improved if accurate climbing data matters.
+Each file that imports successfully is written to `data/activities/<activity-id>.json`, then moved to `data/FIT_files/old_files/` so the next run does not pick it up again. A file that fails to parse stays in `data/FIT_files/` for a retry. Use the new JSON file as the `--activity` input for the review command.
+
+Splits are the laps recorded on the device, so a manual lap button during a workout becomes one split. Distance is the device distance in miles. Pace is minutes per mile from timer time, which excludes pauses; elapsed time is stored beside it. Compare these against the watch summary before trusting them. The file may not include weather, perceived effort, or a written workout name. Do not commit FIT files or normalized activities that contain private training data.
 
 ## 4. Replace the sample data
 
@@ -67,9 +69,9 @@ The sample activity is synthetic, not your real training data.
 ## 5. Input schema (v0.1)
 
 Activity:
-- `activity_id`, `started_at`, `sport`, `distance_m`, `duration_s`
-- optional `elevation_gain_m`, `avg_hr_bpm`, `max_hr_bpm`, `perceived_effort_1_10`, `conditions`, `splits`, `notes`
-- split fields: `split`, `distance_m`, `duration_s`, optional `avg_hr_bpm`, `elevation_gain_m`
+- `activity_id`, `started_at`, `sport`, `distance_mi`, `duration_s`
+- optional `elevation_gain_ft`, `avg_hr_bpm`, `max_hr_bpm`, `perceived_effort_1_10`, `conditions`, `splits`, `notes`
+- split fields: `split`, `start_mi`, `end_mi`, `distance_mi`, `duration_s`, `pace_per_mile`, optional `elapsed_s`, `avg_hr_bpm`, `max_hr_bpm`, `lap_trigger`
 
 Plan:
 - `date`, `session_type`, `purpose`, `prescription`, `target`, `next_sessions`

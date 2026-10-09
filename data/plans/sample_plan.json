@@ -1,12 +1,12 @@
 {
   "date": "2026-10-08",
-  "session_type": "steady aerobic run",
-  "purpose": "Build aerobic volume without compromising the next quality session.",
-  "prescription": "10 km easy to steady; conversational effort; do not force pace.",
+  "session_type": "tempo/threshold run",
+  "purpose": "Build aerobic volume and improve threshold pace.",
+  "prescription": "Warm up, 5 miles a half marathon pace, cool down",
   "target": {
-    "pace_min_per_mile": null,
+    "pace_min_per_mile": "7:45-8:00/mile",
     "hr_range_bpm": null,
-    "effort_description": "Comfortable, conversational"
+    "effort_description": "Moderate to hard"
   },
   "next_sessions": [
     {
@@ -16,12 +16,12 @@
     },
     {
       "date": "2026-10-10",
-      "session_type": "long run",
-      "purpose": "Aerobic endurance"
+      "session_type": "long run with a considerable amount of marathon pace work",
+      "purpose": "Aerobic endurance/race preparation"
     }
   ],
   "block": {
-    "name": "Replace with current block",
-    "objective": "Replace with current block objective"
+    "name": "Week 3",
+    "objective": "Prep for Madison Marathon at the end of week 8"
   }
 }

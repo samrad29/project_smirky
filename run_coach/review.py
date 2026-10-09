@@ -29,6 +29,23 @@ class ReviewOutput(BaseModel):
     plan_change_rationale: str | None
 
 
+METERS_PER_MILE = 1609.344
+FEET_PER_METER = 3.280839895
+
+
+def format_pace_per_mile(duration_s: float, distance_mi: float) -> str | None:
+    """Pace as M:SS per mile."""
+    if distance_mi <= 0:
+        return None
+    total_seconds = duration_s / distance_mi
+    minutes = int(total_seconds // 60)
+    seconds = int(round(total_seconds % 60))
+    if seconds == 60:
+        minutes += 1
+        seconds = 0
+    return f"{minutes}:{seconds:02d}"
+
+
 SYSTEM_PROMPT = """
 You are a careful, evidence-aware endurance running coach reviewing one completed run.
 
@@ -37,6 +54,8 @@ the current training block, and the next few sessions.
 
 Rules:
 - Use only the supplied facts. Never invent weather, effort, heart rate, splits, medical history, or intent.
+- Report distances in miles and paces as minutes:seconds per mile. Do not use kilometers or meters.
+- Splits are the device laps, labeled with start_mi and end_mi. They may be unequal workout laps. Use their distance, pace_per_mile, and heart rate. Pace is already calculated from timer time, which excludes pauses.
 - Explicitly distinguish observation from interpretation. A single unusual run is rarely enough to conclude that fitness changed.
 - Consider route, elevation, weather, sensor quality, pacing, and missing data when supplied; do not assume they explain a result.
 - Compare like with like where possible. Do not treat pace alone as effort, especially across hills or different conditions.
@@ -55,29 +74,89 @@ def load_json(path: str | Path) -> Any:
         return json.load(f)
 
 
+def activity_distance_mi(activity: dict[str, Any]) -> float:
+    if activity.get("distance_mi") is not None:
+        return float(activity["distance_mi"])
+    if activity.get("distance_m") is not None:
+        return float(activity["distance_m"]) / METERS_PER_MILE
+    raise ValueError("Activity needs distance_mi.")
+
+
 def validate_activity(activity: dict[str, Any]) -> None:
-    required = ["activity_id", "started_at", "sport", "distance_m", "duration_s"]
+    required = ["activity_id", "started_at", "sport", "duration_s"]
     missing = [key for key in required if key not in activity]
     if missing:
         raise ValueError(f"Activity is missing required fields: {', '.join(missing)}")
-    if activity["distance_m"] <= 0 or activity["duration_s"] <= 0:
-        raise ValueError("distance_m and duration_s must be positive.")
+    if activity_distance_mi(activity) <= 0 or activity["duration_s"] <= 0:
+        raise ValueError("Distance and duration_s must be positive.")
 
 
 def derive_metrics(activity: dict[str, Any]) -> dict[str, Any]:
-    distance_m = float(activity["distance_m"])
+    distance_mi = activity_distance_mi(activity)
     duration_s = float(activity["duration_s"])
-    distance_km = distance_m / 1000
-    duration_min = duration_s / 60
-    pace_min_per_km = duration_min / distance_km
-    pace_min_per_mile = pace_min_per_km * 1.609344
     return {
-        "distance_km": round(distance_km, 2),
-        "duration_min": round(duration_min, 1),
-        "avg_pace_min_per_km": round(pace_min_per_km, 2),
-        "avg_pace_min_per_mile": round(pace_min_per_mile, 2),
+        "distance_mi": round(distance_mi, 2),
+        "duration_min": round(duration_s / 60, 1),
+        "avg_pace_per_mile": activity.get("avg_pace_per_mile") or format_pace_per_mile(duration_s, distance_mi),
         "splits_provided": bool(activity.get("splits")),
+        "split_length": (activity.get("import_metadata") or {}).get("split_length"),
     }
+
+
+def split_for_coach(split: dict[str, Any]) -> dict[str, Any]:
+    if split.get("distance_mi") is not None:
+        distance_mi = float(split["distance_mi"])
+    elif split.get("distance_m") is not None:
+        distance_mi = float(split["distance_m"]) / METERS_PER_MILE
+    else:
+        distance_mi = None
+    duration_s = split.get("duration_s")
+    pace = split.get("pace_per_mile")
+    if pace is None and distance_mi and duration_s:
+        pace = format_pace_per_mile(float(duration_s), distance_mi)
+    presented: dict[str, Any] = {
+        "split": split.get("split"),
+        "distance_mi": round(distance_mi, 2) if distance_mi is not None else None,
+        "duration_s": duration_s,
+        "pace_per_mile": pace,
+        "avg_hr_bpm": split.get("avg_hr_bpm"),
+    }
+    if split.get("start_mi") is not None:
+        presented["start_mi"] = split["start_mi"]
+        presented["end_mi"] = split.get("end_mi")
+    if split.get("elevation_gain_ft") is not None:
+        presented["elevation_gain_ft"] = split["elevation_gain_ft"]
+    elif split.get("elevation_gain_m") is not None:
+        presented["elevation_gain_ft"] = round(float(split["elevation_gain_m"]) * FEET_PER_METER)
+    return presented
+
+
+def activity_for_coach(activity: dict[str, Any]) -> dict[str, Any]:
+    presented = {
+        key: value
+        for key, value in activity.items()
+        if key not in {"distance_m", "elevation_gain_m", "splits"}
+    }
+    presented["distance_mi"] = round(activity_distance_mi(activity), 2)
+    if presented.get("elevation_gain_ft") is None and activity.get("elevation_gain_m") is not None:
+        presented["elevation_gain_ft"] = round(float(activity["elevation_gain_m"]) * FEET_PER_METER)
+    presented.pop("elevation_gain_m", None)
+    presented["splits"] = [split_for_coach(split) for split in activity.get("splits") or []]
+    presented["derived_metrics"] = derive_metrics(activity)
+    return presented
+
+
+def history_for_coach(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    presented: list[dict[str, Any]] = []
+    for item in history:
+        row = dict(item)
+        if row.get("elevation_gain_ft") is None and row.get("elevation_gain_m") is not None:
+            row["elevation_gain_ft"] = round(float(row["elevation_gain_m"]) * FEET_PER_METER)
+        row.pop("elevation_gain_m", None)
+        row.pop("distance_km", None)
+        row.pop("avg_pace_min_per_km", None)
+        presented.append(row)
+    return presented
 
 
 def build_context(
@@ -89,13 +168,11 @@ def build_context(
     return {
         "athlete_profile": profile,
         "planned_session": plan,
-        "completed_activity": {
-            **activity,
-            "derived_metrics": derive_metrics(activity),
-        },
-        "recent_history": history[-12:],
+        "completed_activity": activity_for_coach(activity),
+        "recent_history": history_for_coach(history[-12:]),
         "instructions": {
             "purpose": "Review this activity against the plan and athlete context.",
+            "units": "miles and minutes per mile",
             "do_not_change_plan": True,
             "missing_data_policy": "Treat absent/null values as unknown, not as zero.",
         },
