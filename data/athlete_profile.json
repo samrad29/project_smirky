@@ -10,14 +10,22 @@
     "long_run_day": "Saturday",
     "strength_training": "Twice a week"
   },
-  "training_preferences": ["Mileage-based training", "Progressive overload", "Varied training"],
-  "constraints": ["Work full time 9am-4:30pm Monday-Friday"],
-  "known_limitations": ["No prior marathon experience"],
+  "training_preferences": [
+    "Mileage-based training",
+    "Progressive overload",
+    "Varied training"
+  ],
+  "constraints": [
+    "Work full time 9am-4:30pm Monday-Friday"
+  ],
+  "known_limitations": [
+    "No prior marathon experience"
+  ],
   "fitness_estimates": {
     "threshold_pace": "",
     "threshold_hr_bpm": null,
     "max_hr_bpm": 200,
-    "notes": "Max HR based on half marathon from June 2026"
+    "notes": "Max HR based on half marathon from June 2026. Reported 5.01-mi tempo/threshold block on 2026-10-08 at perceived exertion 6–7."
   },
   "coaching_preferences": {
     "tone": "direct, analytical, supportive",
