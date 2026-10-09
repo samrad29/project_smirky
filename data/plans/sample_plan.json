@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-08",
+  "session_type": "steady aerobic run",
+  "purpose": "Build aerobic volume without compromising the next quality session.",
+  "prescription": "10 km easy to steady; conversational effort; do not force pace.",
+  "target": {
+    "pace_min_per_mile": null,
+    "hr_range_bpm": null,
+    "effort_description": "Comfortable, conversational"
+  },
+  "next_sessions": [
+    {
+      "date": "2026-10-09",
+      "session_type": "easy/recovery",
+      "purpose": "Absorb training"
+    },
+    {
+      "date": "2026-10-10",
+      "session_type": "long run",
+      "purpose": "Aerobic endurance"
+    }
+  ],
+  "block": {
+    "name": "Replace with current block",
+    "objective": "Replace with current block objective"
+  }
+}
