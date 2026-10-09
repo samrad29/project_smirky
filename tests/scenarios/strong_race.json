@@ -1,0 +1,111 @@
+{
+  "id": "strong_race",
+  "description": "A half marathon that went well. Recognize it, then recover before the next hard session.",
+  "profile": {
+    "athlete_id": "scenario-runner",
+    "goals": ["City Marathon in 16 weeks, goal 3:30-3:45"],
+    "experience_summary": "Three years of consistent running and two marathons. Currently in a marathon build.",
+    "typical_week": {
+      "running_days_per_week": 6,
+      "usual_weekly_mileage_mi": 45,
+      "long_run_day": "Sunday",
+      "strength_training": "Once a week"
+    },
+    "training_preferences": ["Mostly easy running with one workout"],
+    "constraints": ["Works weekdays"],
+    "known_limitations": [],
+    "fitness_estimates": {
+      "threshold_pace": "7:30/mile",
+      "threshold_hr_bpm": 168,
+      "max_hr_bpm": 188,
+      "notes": "Threshold pace from a recent time trial."
+    },
+    "coaching_preferences": {
+      "tone": "direct, analytical, supportive",
+      "ambition": "ambitious but sustainable",
+      "ask_questions_when_uncertain": true
+    }
+  },
+  "plan": {
+    "date": "2026-06-21",
+    "session_type": "half marathon race",
+    "purpose": "Race the half marathon on even effort.",
+    "prescription": "Warm up, race 13.1 miles, then stop. Goal is a controlled even effort, not a workout the next day.",
+    "target": {
+      "pace_min_per_mile": "7:15-7:38/mile",
+      "hr_range_bpm": null,
+      "effort_description": "Hard but controlled race effort. Goal time 1:35-1:40."
+    },
+    "next_sessions": [
+      {
+        "date": "2026-06-22",
+        "session_type": "easy run or rest",
+        "purpose": "Absorb the race"
+      },
+      {
+        "date": "2026-06-24",
+        "session_type": "easy run",
+        "purpose": "Return to easy running only"
+      }
+    ],
+    "block": {
+      "name": "Race week",
+      "objective": "Execute the half marathon, then recover"
+    }
+  },
+  "activity": {
+    "activity_id": "scenario-strong-race",
+    "started_at": "2026-06-21T07:30:00-05:00",
+    "sport": "run",
+    "name": "Half marathon",
+    "distance_mi": 13.1,
+    "duration_s": 5600,
+    "elevation_gain_ft": 120,
+    "avg_hr_bpm": 168,
+    "max_hr_bpm": 182,
+    "avg_pace_per_mile": "7:07",
+    "perceived_effort_1_10": 8,
+    "splits": [
+      {"split": 1, "start_mi": 0.0, "end_mi": 5.0, "distance_mi": 5.0, "duration_s": 2200, "pace_per_mile": "7:20", "avg_hr_bpm": 162},
+      {"split": 2, "start_mi": 5.0, "end_mi": 10.0, "distance_mi": 5.0, "duration_s": 2125, "pace_per_mile": "7:05", "avg_hr_bpm": 170},
+      {"split": 3, "start_mi": 10.0, "end_mi": 13.1, "distance_mi": 3.1, "duration_s": 1275, "pace_per_mile": "6:51", "avg_hr_bpm": 176}
+    ],
+    "notes": "Felt smooth the whole way. Best race. Negative split and finished strong. Goal was 1:35-1:40 and I ran 1:33:20."
+  },
+  "history": [
+    {
+      "activity_id": "scenario-race-prior-1",
+      "date": "2026-06-14",
+      "session_type": "long run",
+      "distance_mi": 12.0,
+      "avg_pace_per_mile": "8:40",
+      "avg_hr_bpm": 152,
+      "perceived_effort_1_10": 6,
+      "notes": "Steady long run, last 3 miles at marathon effort."
+    },
+    {
+      "activity_id": "scenario-race-prior-2",
+      "date": "2026-06-11",
+      "session_type": "easy run",
+      "distance_mi": 5.0,
+      "avg_pace_per_mile": "9:25",
+      "avg_hr_bpm": 136,
+      "perceived_effort_1_10": 3,
+      "notes": "Shakeout before race week."
+    }
+  ],
+  "expect": {
+    "what_went_well_required": true,
+    "next_step_must_include_any": ["easy", "recovery", "rest", "absorb", "shakeout"],
+    "next_step_forbidden_phrases": [
+      "another race tomorrow",
+      "race again tomorrow",
+      "tempo tomorrow",
+      "intervals tomorrow",
+      "hard workout tomorrow"
+    ],
+    "must_include_any_groups": [
+      ["smooth", "strong", "well", "negative", "best", "executed"]
+    ]
+  }
+}

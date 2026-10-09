@@ -179,6 +179,39 @@ def build_context(
     }
 
 
+def generate_review(
+    context: dict[str, Any],
+    *,
+    client: OpenAI | None = None,
+    model: str | None = None,
+) -> tuple[ReviewOutput, str]:
+    """Ask the coach model for a structured review of one context packet."""
+    model_name = model or os.getenv("OPENAI_MODEL", "gpt-5-mini")
+    if client is None:
+        if not os.getenv("OPENAI_API_KEY"):
+            raise RuntimeError("OPENAI_API_KEY is missing. Set it in .env, or use --dry-run.")
+        client = OpenAI()
+    response = client.responses.parse(
+        model=model_name,
+        input=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": (
+                    "Review the following run. Return the required structured assessment. "
+                    "Keep advice proportionate to the evidence.\n\n"
+                    + json.dumps(context, indent=2, ensure_ascii=False)
+                ),
+            },
+        ],
+        text_format=ReviewOutput,
+    )
+    review = response.output_parsed
+    if review is None:
+        raise RuntimeError("The model did not return a parsed review.")
+    return review, model_name
+
+
 def render_email(review: ReviewOutput) -> str:
     sections = [
         review.summary,
@@ -210,49 +243,51 @@ def main() -> None:
     parser.add_argument("--activity", required=True, help="Path to normalized activity JSON.")
     parser.add_argument("--plan", required=True, help="Path to planned workout JSON.")
     parser.add_argument("--profile", required=True, help="Path to athlete profile JSON.")
-    parser.add_argument("--history", required=True, help="Path to recent history JSON list.")
+    parser.add_argument("--history", help="Path to recent history JSON list.")
+    parser.add_argument(
+        "--history-from-supabase",
+        action="store_true",
+        help="Load recent activities from Supabase instead of a history file.",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Print context packet; do not call the model.")
     parser.add_argument("--output-dir", default="output", help="Directory for saved review files.")
     args = parser.parse_args()
+
+    if args.history_from_supabase and args.history:
+        parser.error("Use either --history or --history-from-supabase, not both.")
+    if not args.history_from_supabase and not args.history:
+        parser.error("--history is required unless --history-from-supabase is set.")
 
     load_dotenv()
     activity = load_json(args.activity)
     plan = load_json(args.plan)
     profile = load_json(args.profile)
-    history = load_json(args.history)
-
     validate_activity(activity)
+
+    if args.history_from_supabase:
+        from run_coach.store import load_recent_activities, supabase_configured
+
+        if not supabase_configured():
+            raise RuntimeError(
+                "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required for --history-from-supabase."
+            )
+        athlete_id = profile.get("athlete_id")
+        if not athlete_id:
+            raise ValueError("Athlete profile needs athlete_id to load history from Supabase.")
+        history = load_recent_activities(str(athlete_id), exclude_activity_id=str(activity["activity_id"]))
+    else:
+        history = load_json(args.history)
+
     if not isinstance(history, list):
-        raise ValueError("History file must contain a JSON list.")
+        raise ValueError("History must be a JSON list.")
 
     context = build_context(activity, plan, profile, history)
     if args.dry_run:
         print(json.dumps(context, indent=2, ensure_ascii=False))
         return
 
-    if not os.getenv("OPENAI_API_KEY"):
-        raise RuntimeError("OPENAI_API_KEY is missing. Set it in .env, or use --dry-run.")
-
-    model = os.getenv("OPENAI_MODEL", "gpt-5-mini")
-    client = OpenAI()
-    response = client.responses.parse(
-        model=model,
-        input=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": (
-                    "Review the following run. Return the required structured assessment. "
-                    "Keep advice proportionate to the evidence.\n\n"
-                    + json.dumps(context, indent=2, ensure_ascii=False)
-                ),
-            },
-        ],
-        text_format=ReviewOutput,
-    )
-    review = response.output_parsed
-    if review is None:
-        raise RuntimeError("The model did not return a parsed review.")
+    review, model = generate_review(context)
+    email_body = render_email(review)
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -262,19 +297,32 @@ def main() -> None:
         "model": model,
         "activity_id": activity["activity_id"],
         "review": review.model_dump(),
-        "email_body": render_email(review),
+        "email_body": email_body,
     }
     json_path = output_dir / f"{safe_id}_review.json"
     md_path = output_dir / f"{safe_id}_review.md"
     json_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
     md_path.write_text(
-        f"# {review.subject}\n\n{render_email(review)}\n",
+        f"# {review.subject}\n\n{email_body}\n",
         encoding="utf-8",
     )
     print(f"Saved structured review: {json_path}")
     print(f"Saved email draft:      {md_path}")
+
+    from run_coach.store import persist_review_if_configured
+
+    if persist_review_if_configured(
+        activity=activity,
+        plan=plan,
+        profile=profile,
+        review=review.model_dump(),
+        model=model,
+        email_body=email_body,
+    ):
+        print("Saved review bundle to Supabase.")
+
     print("\n--- Email draft preview ---\n")
-    print(f"Subject: {review.subject}\n\n{render_email(review)}")
+    print(f"Subject: {review.subject}\n\n{email_body}")
 
 
 if __name__ == "__main__":

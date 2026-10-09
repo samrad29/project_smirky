@@ -1,0 +1,114 @@
+{
+  "id": "bad_workout",
+  "description": "Interval session cut short because the legs felt dead. One bad day, not a fitness drop, and not a makeup workout.",
+  "profile": {
+    "athlete_id": "scenario-runner",
+    "goals": ["City Marathon in 16 weeks, goal 3:30-3:45"],
+    "experience_summary": "Three years of consistent running and two marathons. Currently in a marathon build.",
+    "typical_week": {
+      "running_days_per_week": 6,
+      "usual_weekly_mileage_mi": 45,
+      "long_run_day": "Sunday",
+      "strength_training": "Once a week"
+    },
+    "training_preferences": ["Mostly easy running with one workout"],
+    "constraints": ["Works weekdays"],
+    "known_limitations": [],
+    "fitness_estimates": {
+      "threshold_pace": "7:30/mile",
+      "threshold_hr_bpm": 168,
+      "max_hr_bpm": 188,
+      "notes": "Threshold pace from a recent time trial."
+    },
+    "coaching_preferences": {
+      "tone": "direct, analytical, supportive",
+      "ambition": "ambitious but sustainable",
+      "ask_questions_when_uncertain": true
+    }
+  },
+  "plan": {
+    "date": "2026-06-12",
+    "session_type": "interval workout",
+    "purpose": "Threshold-support intervals.",
+    "prescription": "2 mile warm-up, 6 x 1 mile at 7:15-7:30 with 2 minutes easy jog, 1.5 mile cool-down.",
+    "target": {
+      "pace_min_per_mile": "7:15-7:30/mile for the reps",
+      "hr_range_bpm": null,
+      "effort_description": "Controlled hard"
+    },
+    "next_sessions": [
+      {
+        "date": "2026-06-13",
+        "session_type": "easy run",
+        "purpose": "Recover from the workout"
+      },
+      {
+        "date": "2026-06-14",
+        "session_type": "easy run with strides",
+        "purpose": "Aerobic maintenance"
+      }
+    ],
+    "block": {
+      "name": "Week 6",
+      "objective": "Marathon build, one quality session this week"
+    }
+  },
+  "activity": {
+    "activity_id": "scenario-bad-workout",
+    "started_at": "2026-06-12T17:40:00-05:00",
+    "sport": "run",
+    "name": "Interval workout",
+    "distance_mi": 8.0,
+    "duration_s": 4393,
+    "elevation_gain_ft": 40,
+    "avg_hr_bpm": 164,
+    "max_hr_bpm": 181,
+    "avg_pace_per_mile": "9:09",
+    "perceived_effort_1_10": 9,
+    "splits": [
+      {"split": 1, "start_mi": 0.0, "end_mi": 2.0, "distance_mi": 2.0, "duration_s": 1080, "pace_per_mile": "9:00", "avg_hr_bpm": 142},
+      {"split": 2, "start_mi": 2.0, "end_mi": 3.0, "distance_mi": 1.0, "duration_s": 440, "pace_per_mile": "7:20", "avg_hr_bpm": 166},
+      {"split": 3, "start_mi": 3.0, "end_mi": 4.0, "distance_mi": 1.0, "duration_s": 448, "pace_per_mile": "7:28", "avg_hr_bpm": 170},
+      {"split": 4, "start_mi": 4.0, "end_mi": 5.0, "distance_mi": 1.0, "duration_s": 465, "pace_per_mile": "7:45", "avg_hr_bpm": 176},
+      {"split": 5, "start_mi": 5.0, "end_mi": 6.0, "distance_mi": 1.0, "duration_s": 490, "pace_per_mile": "8:10", "avg_hr_bpm": 180},
+      {"split": 6, "start_mi": 6.0, "end_mi": 8.0, "distance_mi": 2.0, "duration_s": 1200, "pace_per_mile": "10:00", "avg_hr_bpm": 148}
+    ],
+    "notes": "Legs felt dead by rep 4. I cut the workout after 4 reps and jogged home. The last two reps were not done."
+  },
+  "history": [
+    {
+      "activity_id": "scenario-bad-prior-1",
+      "date": "2026-06-10",
+      "session_type": "easy run",
+      "distance_mi": 6.0,
+      "avg_pace_per_mile": "9:20",
+      "avg_hr_bpm": 138,
+      "perceived_effort_1_10": 3,
+      "notes": "Easy and relaxed."
+    },
+    {
+      "activity_id": "scenario-bad-prior-2",
+      "date": "2026-06-08",
+      "session_type": "interval workout",
+      "distance_mi": 9.5,
+      "avg_pace_per_mile": "8:40",
+      "avg_hr_bpm": 158,
+      "perceived_effort_1_10": 7,
+      "notes": "Completed all 6 reps at 7:25. Felt controlled."
+    }
+  ],
+  "expect": {
+    "deviations_required": true,
+    "forbid_makeup_prescription": true,
+    "next_step_must_include_any": ["easy", "recovery", "rest", "jog", "absorb"],
+    "next_step_forbidden_phrases": [
+      "finish the remaining reps tomorrow",
+      "complete the remaining reps tomorrow",
+      "repeat the intervals tomorrow",
+      "another interval session tomorrow"
+    ],
+    "must_include_any_groups": [
+      ["rep", "reps", "cut", "short", "missed", "skipped", "dropped"]
+    ]
+  }
+}

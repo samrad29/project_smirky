@@ -2,6 +2,7 @@
 .venv/
 __pycache__/
 *.py[cod]
+.pytest_cache/
 output/*
 !output/.gitkeep
 data/activities/*
@@ -13,3 +14,6 @@ data/FIT_files/*
 !data/FIT_files/old_files/
 data/FIT_files/old_files/*
 !data/FIT_files/old_files/.gitkeep
+data/conversations/*
+!data/conversations/.gitkeep
+data/profile_changelog.jsonl

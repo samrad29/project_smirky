@@ -1,4 +1,6 @@
 fitparse>=1.2.0
 openai>=1.68.0
 pydantic>=2.7.0
+pytest>=8.0.0
 python-dotenv>=1.0.1
+supabase>=2.15.0
