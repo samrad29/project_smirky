@@ -17,3 +17,4 @@ data/FIT_files/old_files/*
 data/conversations/*
 !data/conversations/.gitkeep
 data/profile_changelog.jsonl
+data/garmin/

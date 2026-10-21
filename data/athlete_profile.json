@@ -13,19 +13,21 @@
   "training_preferences": [
     "Mileage-based training",
     "Progressive overload",
-    "Varied training"
+    "Varied training",
+    "Include strides 2–3×/week at the end of easy runs"
   ],
   "constraints": [
     "Work full time 9am-4:30pm Monday-Friday"
   ],
   "known_limitations": [
-    "No prior marathon experience"
+    "No prior marathon experience",
+    "Blew up the last 5 miles of 20‑mile long run on 2026-10-10"
   ],
   "fitness_estimates": {
     "threshold_pace": "",
     "threshold_hr_bpm": null,
     "max_hr_bpm": 200,
-    "notes": "Max HR based on half marathon from June 2026. Reported 5.01-mi tempo/threshold block on 2026-10-08 at perceived exertion 6–7."
+    "notes": "Athlete reports 2026-10-10 20‑mile long run: approx 580 ft elevation gain; carried ~2 L fluids (refilled with ~3 miles to go); consumed 4 Precision Fuel 30 g gels (120 g) and 2 GU totaling 28 g; took a gel every ~3 miles; total carbs ~148 g (~41 g/hr)."
   },
   "coaching_preferences": {
     "tone": "direct, analytical, supportive",

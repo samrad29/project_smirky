@@ -51,7 +51,7 @@ The result is saved under `output/`. The program does not email anything or chan
 python -m run_coach.chat
 ```
 
-The session starts with a greeting, then checks `data/FIT_files/` for FIT files that have not been imported. Archived files in `old_files/` are ignored. You can import those files before talking about the latest workouts in `data/activities/`.
+The session starts with a greeting. If `GARMIN_EMAIL` and `GARMIN_PASSWORD` are set, it downloads Garmin activities that are newer than the latest activity already in `data/activities/` and drops those FIT files into `data/FIT_files/`. It does not download the whole account. It then checks that folder for FIT files that have not been imported. Archived files in `old_files/` are ignored. You can import those files before talking about the latest workouts in `data/activities/`.
 
 The conversation is appended to `data/conversations/<athlete-id>.jsonl`. The coach can propose a change to one allowed profile field, but nothing is saved until you confirm it. Applied and declined proposals are appended to `data/profile_changelog.jsonl`. Inspect either one from the prompt:
 

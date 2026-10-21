@@ -69,7 +69,11 @@ def coach_context(profile: dict[str, Any], activities: list[dict[str, Any]], pen
         if len(splits) > 20:
             latest["splits"] = splits[:20]
             latest["splits_truncated"] = True
-    prior = [activity_to_history_row(activity) for activity in activities[1:5]]
+    prior = []
+    for activity in activities[1:5]:
+        row = activity_to_history_row(activity)
+        row["split_count"] = len(activity.get("splits") or [])
+        prior.append(row)
     return {
         "athlete_profile": profile,
         "uningested_fit_files": [path.name for path in pending],

@@ -10,8 +10,18 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 from run_coach.activities import coach_context, format_inbox, format_workouts, load_activities, pending_fit_files
+from run_coach.activity_edit import (
+    ACTIVITY_FIELDS,
+    ActivityUpdateError,
+    activity_snapshot,
+    commit_activity_change,
+    find_activity,
+    format_activity_proposal,
+    propose_activity_update,
+)
 from run_coach.conversation import append_message, conversation_path, load_messages, recent_dialogue
 from run_coach.fit_import import import_inbox
+from run_coach.garmin_sync import pull_new_activities
 from run_coach.profile import (
     FIELD_RULES,
     PROFILE_UPDATE_RULES,
@@ -35,7 +45,12 @@ Discuss the latest workouts. A single unusual run is not a fitness change.
 If the athlete mentions pain, stay conservative, do not diagnose, and suggest rest or easy movement plus professional care when the pain is concerning.
 Do not prescribe makeup workouts or extra hard training to compensate.
 {PROFILE_UPDATE_RULES}
-Ask one question at a time. Keep replies short.
+Activity rules:
+- Earlier activities in the context are summaries. latest_activity includes its laps. If an earlier activity has split_count greater than 0, those laps and heart rates are stored.
+- Call get_activity before saying laps, splits, or heart-rate details are missing.
+- Correct a stored activity fact with propose_activity_update. Elevation, laps, fueling notes, and the name of one workout belong on that activity, not on the athlete profile.
+- That tool does not save anything until the athlete confirms it in the terminal.
+Keep replies short. Ask at most one question, and only when the answer would change the advice. If you can already respond, stop without a question.
 """.strip()
 
 PROPOSE_TOOL = {
@@ -64,6 +79,68 @@ PROPOSE_TOOL = {
         "additionalProperties": False,
     },
 }
+
+GET_ACTIVITY_TOOL = {
+    "type": "function",
+    "name": "get_activity",
+    "description": (
+        "Load one saved activity, including laps, pace, and heart rate. "
+        "Use this before claiming that splits are missing."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "activity_id": {"type": "string"},
+            "date": {"type": "string", "description": "YYYY-MM-DD if the activity id is not known."},
+        },
+        "additionalProperties": False,
+    },
+}
+
+PROPOSE_ACTIVITY_TOOL = {
+    "type": "function",
+    "name": "propose_activity_update",
+    "description": (
+        "Propose one correction to a saved activity from a fact the athlete just stated. "
+        "This does not save the activity."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "activity_id": {"type": "string"},
+            "field": {"type": "string", "enum": list(ACTIVITY_FIELDS)},
+            "new_value": {
+                "anyOf": [
+                    {"type": "string"},
+                    {"type": "number"},
+                    {"type": "boolean"},
+                    {"type": "null"},
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "distance_mi": {"type": "number"},
+                                "duration_s": {"type": "number"},
+                                "pace_per_mile": {"type": "string"},
+                                "avg_hr_bpm": {"type": "integer"},
+                                "start_mi": {"type": "number"},
+                                "end_mi": {"type": "number"},
+                            },
+                            "required": ["distance_mi"],
+                            "additionalProperties": False,
+                        },
+                    },
+                ]
+            },
+            "reason": {"type": "string"},
+        },
+        "required": ["activity_id", "field", "new_value", "reason"],
+        "additionalProperties": False,
+    },
+}
+
+COACH_TOOLS = [PROPOSE_TOOL, GET_ACTIVITY_TOOL, PROPOSE_ACTIVITY_TOOL]
 
 
 def greeting(profile: dict[str, Any]) -> str:
@@ -168,6 +245,53 @@ def resolve_profile_tool(
     return f"The athlete declined. {entry['field']} was not changed."
 
 
+def resolve_activity_read(activities: list[dict[str, Any]], arguments: dict[str, Any]) -> str:
+    activity_id = arguments.get("activity_id") or None
+    on_date = arguments.get("date") or None
+    try:
+        activity = find_activity(
+            activities,
+            activity_id=str(activity_id) if activity_id else None,
+            on_date=str(on_date) if on_date else None,
+        )
+    except ActivityUpdateError as exc:
+        return f"Rejected: {exc}"
+    return json.dumps(activity_snapshot(activity), ensure_ascii=False)
+
+
+def resolve_activity_tool(
+    activities: list[dict[str, Any]],
+    arguments: dict[str, Any],
+    *,
+    ask_confirm: Confirm,
+    activities_dir: Path | None,
+) -> str:
+    activity_id = arguments.get("activity_id")
+    try:
+        activity = find_activity(activities, activity_id=str(activity_id) if activity_id else None)
+        proposal = propose_activity_update(
+            activity,
+            str(arguments.get("field", "")),
+            arguments.get("new_value"),
+            str(arguments.get("reason", "")),
+        )
+    except ActivityUpdateError as exc:
+        return f"Rejected: {exc}"
+    if activities_dir is None:
+        return "Rejected: no activities directory is configured."
+    print(format_activity_proposal(proposal))
+    accepted = ask_confirm("Apply this activity change? [y/n] ")
+    entry = commit_activity_change(
+        activity,
+        proposal,
+        accepted=accepted,
+        activities_dir=activities_dir,
+    )
+    if accepted:
+        return f"The athlete confirmed. Applied {entry['field']} on activity {proposal.activity_id}."
+    return f"The athlete declined. {entry['field']} on activity {proposal.activity_id} was not changed."
+
+
 def _response_text(response: Any) -> str:
     text = getattr(response, "output_text", "") or ""
     return text.strip()
@@ -187,6 +311,7 @@ def complete_exchange(
     changelog_path: Path,
     conversation_file: Path,
     store_client: Any | None = None,
+    activities_dir: Path | None = None,
 ) -> str:
     """Send one athlete turn, or an opening prompt when user_message is None."""
     model_input: list[dict[str, Any]] = list(recent_dialogue(messages))
@@ -205,8 +330,9 @@ def complete_exchange(
             {
                 "role": "user",
                 "content": (
-                    "The athlete just opened the session. Ask one specific question about the latest workout "
-                    "if one is in the context. Otherwise ask whether they want to import a FIT file or describe a run. "
+                    "The athlete just opened the session. Comment on the latest workout if one is in the context. "
+                    "Ask a question only when one missing fact would change the advice. "
+                    "If there is no workout in the context, ask whether they want to import a FIT file or describe a run. "
                     "Do not propose a profile update yet."
                 ),
             }
@@ -223,7 +349,7 @@ def complete_exchange(
             model=model,
             instructions=instructions,
             input=model_input,
-            tools=[PROPOSE_TOOL],
+            tools=COACH_TOOLS,
             store=False,
         )
         text = _response_text(response)
@@ -236,9 +362,7 @@ def complete_exchange(
         for item in output:
             model_input.append(_as_input_item(item))
         for name, call_id, arguments in calls:
-            if name != "propose_profile_update":
-                result = f"Unknown tool: {name}"
-            else:
+            if name == "propose_profile_update":
                 result = resolve_profile_tool(
                     profile,
                     arguments,
@@ -247,6 +371,17 @@ def complete_exchange(
                     changelog_path=changelog_path,
                     client=store_client,
                 )
+            elif name == "get_activity":
+                result = resolve_activity_read(activities, arguments)
+            elif name == "propose_activity_update":
+                result = resolve_activity_tool(
+                    activities,
+                    arguments,
+                    ask_confirm=ask_confirm,
+                    activities_dir=activities_dir,
+                )
+            else:
+                result = f"Unknown tool: {name}"
             model_input.append({"type": "function_call_output", "call_id": call_id, "output": result})
     reply = "\n\n".join(part for part in reply_parts if part).strip()
     if reply:
@@ -299,6 +434,9 @@ def main() -> None:
 
     activities_dir = Path(args.activities)
     inbox = Path(args.fit_inbox)
+    garmin_note = pull_new_activities(inbox, activities_dir)
+    if garmin_note:
+        print(garmin_note)
     conversation_file = conversation_path(args.conversation_dir, str(profile["athlete_id"]))
     messages = load_messages(conversation_file)
     pending = pending_fit_files(inbox)
@@ -333,6 +471,7 @@ def main() -> None:
             profile_path=profile_path,
             changelog_path=changelog_path,
             conversation_file=conversation_file,
+            activities_dir=activities_dir,
         )
         if opening:
             print(f"\nCoach: {opening}")
@@ -379,6 +518,7 @@ def main() -> None:
             profile_path=profile_path,
             changelog_path=changelog_path,
             conversation_file=conversation_file,
+            activities_dir=activities_dir,
         )
         if reply:
             print(f"\nCoach: {reply}")

@@ -135,7 +135,7 @@ def activity_for_coach(activity: dict[str, Any]) -> dict[str, Any]:
     presented = {
         key: value
         for key, value in activity.items()
-        if key not in {"distance_m", "elevation_gain_m", "splits"}
+        if key not in {"distance_m", "elevation_gain_m", "splits", "device_splits"}
     }
     presented["distance_mi"] = round(activity_distance_mi(activity), 2)
     if presented.get("elevation_gain_ft") is None and activity.get("elevation_gain_m") is not None:
